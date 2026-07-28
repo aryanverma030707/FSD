@@ -1,0 +1,2 @@
+This is a new note.
+This is an appended note. It can read, write and append data in a file.
