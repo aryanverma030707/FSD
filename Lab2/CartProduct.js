@@ -1,195 +1,183 @@
-import { readFile, writeFile } from "fs/promises";
 import readline from "readline/promises";
 import { stdin, stdout } from "process";
+import { readFile, writeFile } from "fs/promises";
 
 const FILE = "product.json";
 
-// Read cart
 const getCart = async () => {
-    try {
-        const data = await readFile(FILE, "utf-8");
-        return JSON.parse(data);
-    } catch {
-        return [];
-    }
+  const data = await readFile(FILE, "utf-8");
+  return JSON.parse(data);
 };
 
-// Save cart
 const saveCart = async (cart) => {
-    await writeFile(FILE, JSON.stringify(cart, null, 2));
+  await writeFile(FILE, JSON.stringify(cart, null, 2));
 };
 
-// Add product
 const addToCart = async (product) => {
-    const cart = await getCart();
+  const cart = await getCart();
 
-    const item = cart.find((p) => p.id === product.id);
+  const isFoundInCart = cart.find((item) => item.id === product.id);
 
-    if (item) {
-        item.qty += product.qty;
-    } else {
-        cart.push(product);
-    }
+  if (isFoundInCart) {
+    isFoundInCart.qty += product.qty;
+  } else {
+    cart.push(product);
+  }
 
-    await saveCart(cart);
-    console.log("✅ Product added successfully.");
+  await saveCart(cart);
+  console.log(`${product.name} added/updated to 🛒`);
 };
 
-// Display cart
 const displayCart = async () => {
-    const cart = await getCart();
+  const cart = await getCart();
 
-    if (cart.length === 0) {
-        console.log("\n🛒 Cart is Empty\n");
-        return;
-    }
+  if (cart.length === 0) {
+    console.log("\nCart is empty\n");
+    return;
+  }
 
-    console.log("\n---------------- CART ----------------");
+  console.table(cart);
 
-    let total = 0;
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.qty,
+    0
+  );
 
-    cart.forEach((item) => {
-        const amount = item.price * item.qty;
-        total += amount;
-
-        console.log(
-            `ID:${item.id} | ${item.name} | ₹${item.price} | Qty:${item.qty} | Total: ₹${amount}`
-        );
-    });
-
-    console.log("--------------------------------------");
-    console.log(`Grand Total : ₹${total}\n`);
+  console.log(`Total payable amount Rs. ${total}`);
 };
 
-// Remove Product
 const removeProduct = async (id) => {
-    let cart = await getCart();
+  const cart = await getCart();
 
-    const oldLength = cart.length;
+  const index = cart.findIndex((item) => item.id === id);
 
-    cart = cart.filter((item) => item.id !== id);
+  if (index === -1) {
+    console.log("❌ Product not found");
+    return;
+  }
 
-    if (oldLength === cart.length) {
-        console.log("❌ Product not found.");
-        return;
-    }
+  const removedProduct = cart[index];
 
-    await saveCart(cart);
-    console.log("🗑 Product removed.");
+  cart.splice(index, 1);
+
+  await saveCart(cart);
+
+  console.log(`${removedProduct.name} removed from 🛒`);
 };
 
-// Update Quantity
 const updateQuantity = async (id, qty) => {
-    const cart = await getCart();
+  const cart = await getCart();
 
-    const item = cart.find((p) => p.id === id);
+  const product = cart.find((item) => item.id === id);
 
-    if (!item) {
-        console.log("❌ Product not found.");
-        return;
-    }
+  if (!product) {
+    console.log("❌ Product not found");
+    return;
+  }
 
-    item.qty = qty;
+  if (qty <= 0) {
+    console.log("❌ Quantity must be greater than 0");
+    return;
+  }
 
-    await saveCart(cart);
+  product.qty = qty;
 
-    console.log("✅ Quantity updated.");
+  await saveCart(cart);
+
+  console.log(`${product.name} quantity updated to ${qty}`);
 };
 
-// Checkout
 const checkout = async () => {
-    const cart = await getCart();
+  const cart = await getCart();
 
-    if (cart.length === 0) {
-        console.log("🛒 Cart is Empty.");
-        return;
-    }
+  if (cart.length === 0) {
+    console.log("\nCart is empty. Nothing to checkout.\n");
+    return;
+  }
 
-    let total = 0;
+  console.log("\n========== BILL ==========");
 
-    console.log("\n========== BILL ==========");
+  console.table(cart);
 
-    cart.forEach((item) => {
-        const amount = item.price * item.qty;
-        total += amount;
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.qty,
+    0
+  );
 
-        console.log(
-            `${item.name} (${item.qty}) = ₹${amount}`
-        );
-    });
+  console.log(`Total Amount: Rs. ${total}`);
+  console.log("==========================");
+  console.log("✅ Order placed successfully!");
 
-    console.log("--------------------------");
-    console.log(`Grand Total : ₹${total}`);
-    console.log("==========================");
-
-    await saveCart([]);
-
-    console.log("🎉 Thank you for shopping!\n");
+  await saveCart([]);
 };
 
 const main = async () => {
-    const cin = readline.createInterface({
-        input: stdin,
-        output: stdout,
-    });
+  let choice;
 
-    let choice;
+  const cin = readline.createInterface({
+    input: stdin,
+    output: stdout,
+  });
 
-    do {
-        console.log("\n========= AMAZON SHOPPING =========");
-        console.log("1. Display Cart");
-        console.log("2. Add Product");
-        console.log("3. Remove Product");
-        console.log("4. Update Quantity");
-        console.log("5. Checkout & Exit");
+  do {
+    console.log("\n\nWelcome to Amazon Shopping 🛒");
+    console.log("1........Show Cart");
+    console.log("2........Add Product");
+    console.log("3........Remove Product");
+    console.log("4........Update Quantity");
+    console.log("5........Checkout");
 
-        choice = Number(await cin.question("Enter Choice: "));
+    choice = await cin.question("Enter your choice: ");
 
-        switch (choice) {
-            case 1:
-                await displayCart();
-                break;
+    switch (Number(choice)) {
+      case 1:
+        await displayCart();
+        break;
 
-            case 2: {
-                const id = Number(await cin.question("Enter ID: "));
-                const name = await cin.question("Enter Name: ");
-                const price = Number(await cin.question("Enter Price: "));
-                const qty = Number(await cin.question("Enter Quantity: "));
+      case 2: {
+        const item = await cin.question("Enter id,name,price,qty: ");
 
-                await addToCart({
-                    id,
-                    name,
-                    price,
-                    qty,
-                });
+        const [id, name, price, qty] = item
+          .split(",")
+          .map((p) => p.trim());
 
-                break;
-            }
+        await addToCart({
+          id: Number(id),
+          name,
+          price: Number(price),
+          qty: Number(qty),
+        });
 
-            case 3: {
-                const id = Number(await cin.question("Enter ID to Remove: "));
-                await removeProduct(id);
-                break;
-            }
+        break;
+      }
 
-            case 4: {
-                const id = Number(await cin.question("Enter ID: "));
-                const qty = Number(await cin.question("Enter New Quantity: "));
-                await updateQuantity(id, qty);
-                break;
-            }
+      case 3: {
+        const id = await cin.question("Enter product id to remove: ");
 
-            case 5:
-                await checkout();
-                break;
+        await removeProduct(Number(id));
 
-            default:
-                console.log("❌ Invalid Choice");
-        }
+        break;
+      }
 
-    } while (choice !== 5);
+      case 4: {
+        const id = await cin.question("Enter product id: ");
+        const qty = await cin.question("Enter new quantity: ");
 
-    cin.close();
+        await updateQuantity(Number(id), Number(qty));
+
+        break;
+      }
+
+      case 5:
+        await checkout();
+        break;
+
+      default:
+        console.log("🛑 Invalid choice! Try again");
+    }
+  } while (Number(choice) !== 5);
+
+  cin.close();
 };
 
 main();
